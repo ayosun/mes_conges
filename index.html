@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Mon carnet de congés</title>
+<style>
+/* ---------------------------------------------------------------------
+   Fonts : une serif de caractère pour les titres (Fraunces), une mono
+   pour les chiffres/étiquettes façon registre (IBM Plex Mono), et une
+   sans-serif neutre pour le texte courant (Inter).
+--------------------------------------------------------------------- */
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap');
+
+:root{
+  /* Fond "papier" + encre */
+  --paper: #EFE9DC;
+  --paper-dim: #E5DCC7;
+  --ink: #2B2320;
+  --ink-soft: #6b5f52;
+  --rule: #CBBC9E;
+
+  /* Palette demandée : vert / orange / marron (maroon) */
+  --cp:      #2F6B47; /* vert forêt   -> CP (année en cours) */
+  --cp-dim:  #DCE9DE;
+  --n1:      #7A2E2E; /* marron/maroon -> CP N-1 (reliquat)  */
+  --n1-dim:  #EBDBDA;
+  --rtt:     #C1662F; /* orange brûlé -> RTT                */
+  --rtt-dim: #F3E1D2;
+  --amber:   #B8892B; /* accent pour les acquisitions auto  */
+}
+
+*{ box-sizing:border-box; }
+
+html,body{
+  margin:0; padding:0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family:'Inter', sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+/* Léger effet "papier ligné" en fond */
+body{
+  background-image: repeating-linear-gradient(0deg, transparent, transparent 27px, rgba(43,35,32,0.035) 28px);
+}
+
+.app{ max-width: 480px; margin:0 auto; padding: 28px 18px 60px; min-height:100vh; position:relative; }
+
+/* ---------- En-tête ---------- */
+.hdr{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom: 20px; border-bottom: 2px solid var(--ink); padding-bottom:10px; }
+.hdr h1{ font-family:'Fraunces', serif; font-weight:600; font-size: 1.4rem; margin:0; letter-spacing:-0.01em; }
+.hdr .month{ font-family:'IBM Plex Mono', monospace; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); }
+.gear{ background:none; border:none; cursor:pointer; font-size:1.1rem; color: var(--ink-soft); padding: 4px; line-height:1; }
+.gear:hover{ color: var(--ink); }
+
+/* ---------- Cartes de solde ("stubs") ---------- */
+.stubs{ display:flex; flex-direction:column; gap: 10px; margin-bottom: 20px; }
+.stub{ background: var(--paper-dim); border: 1.5px dashed var(--rule); border-radius: 4px; padding: 13px 14px; position:relative; overflow:hidden; display:flex; align-items:center; justify-content:space-between; }
+.stub::before{ content:''; position:absolute; left:0; top:0; bottom:0; width:5px; } /* liseré de couleur à gauche */
+.stub.cp::before{ background: var(--cp); }
+.stub.n1::before{ background: var(--n1); }
+.stub.rtt::before{ background: var(--rtt); }
+.stub .label{ font-family:'IBM Plex Mono', monospace; font-size: 0.66rem; text-transform:uppercase; letter-spacing:0.08em; color: var(--ink-soft); margin-bottom:4px; }
+.stub .val{ font-family:'Fraunces', serif; font-size: 1.7rem; font-weight:600; line-height:1; }
+.stub.cp .val{ color: var(--cp); }
+.stub.n1 .val{ color: var(--n1); }
+.stub.rtt .val{ color: var(--rtt); }
+.stub .unit{ font-family:'Inter',sans-serif; font-size:0.74rem; font-weight:500; color: var(--ink-soft); margin-left:3px; }
+.stub .right{ text-align:right; }
+.stub .sub{ margin-top:3px; font-size:0.68rem; color: var(--ink-soft); }
+.stub .prov{ margin-top:3px; font-size:0.68rem; color: var(--amber); font-weight:600; }
+
+/* ---------- Boutons d'action principaux ---------- */
+.actions{ display:flex; gap:10px; margin-bottom: 24px; }
+.btn{ flex:1; font-family:'Inter', sans-serif; font-weight:600; font-size:0.86rem; padding: 12px 14px; border-radius: 3px; border: 1.5px solid var(--ink); background: var(--ink); color: var(--paper); cursor:pointer; transition: transform .08s ease; }
+.btn:active{ transform: scale(0.98); }
+.btn.secondary{ background: transparent; color: var(--ink); }
+
+.section-title{ font-family:'IBM Plex Mono', monospace; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.09em; color: var(--ink-soft); margin: 18px 0 8px 2px; display:flex; justify-content:space-between; align-items:center; }
+
+/* ---------- Lignes du journal (historique + à venir) ---------- */
+.entry{ display:grid; grid-template-columns: 36px 1fr auto; gap:10px; align-items:center; padding: 10px 2px; border-bottom: 1px solid var(--rule); }
+.dot{ width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono', monospace; font-size:0.58rem; font-weight:600; border: 1.5px solid currentColor; transform: rotate(-6deg); }
+.entry.cp .dot{ color: var(--cp); }
+.entry.n1 .dot{ color: var(--n1); }
+.entry.rtt .dot{ color: var(--rtt); }
+.entry .desc{ font-size:0.84rem; }
+.entry .desc .note{ display:block; font-size:0.71rem; color: var(--ink-soft); margin-top:2px; }
+.entry .right-col{ display:flex; flex-direction:column; align-items:flex-end; gap:4px; }
+.entry .delta{ font-family:'IBM Plex Mono', monospace; font-weight:600; font-size:0.84rem; white-space:nowrap; text-align:right; }
+.entry .delta.pos{ color: var(--cp); }
+.entry .delta.neg{ color: var(--rtt); }
+.entry.pending{ opacity:0.9; }
+.entry.pending .delta{ color: var(--amber); }
+.empty{ text-align:center; padding: 24px 10px; color: var(--ink-soft); font-size:0.82rem; font-family:'IBM Plex Mono', monospace; }
+
+/* Bouton "supprimer" sur les écritures effaçables (congés posés / à venir).
+   Tap 1 = passe en mode confirmation ("Confirmer ?"), tap 2 = supprime. */
+.del-btn{ font-family:'IBM Plex Mono', monospace; font-size:0.65rem; background:none; border: 1px solid var(--rule); color: var(--ink-soft); border-radius:3px; padding:2px 6px; cursor:pointer; }
+.del-btn.confirm{ border-color: var(--rtt); color: var(--rtt); background: var(--rtt-dim); }
+
+/* ---------- Feuille modale (bottom sheet) pour les formulaires ---------- */
+.overlay{ position:fixed; inset:0; background: rgba(43,35,32,0.45); display:none; align-items:flex-end; justify-content:center; z-index: 50; }
+.overlay.open{ display:flex; }
+.sheet{ background: var(--paper); width:100%; max-width:480px; border-radius: 14px 14px 0 0; padding: 22px 20px 28px; border-top: 3px solid var(--ink); max-height: 86vh; overflow-y:auto; position:relative; }
+.sheet h2{ font-family:'Fraunces', serif; font-size:1.15rem; margin: 0 0 16px; }
+.field{ margin-bottom:14px; }
+.field label{ display:block; font-size:0.74rem; font-family:'IBM Plex Mono', monospace; text-transform:uppercase; letter-spacing:0.06em; color: var(--ink-soft); margin-bottom:5px; }
+.field input, .field select, .field textarea{ width:100%; font-family:'Inter', sans-serif; font-size:0.9rem; padding: 10px 11px; border: 1.5px solid var(--rule); border-radius: 4px; background: #fff; color: var(--ink); }
+.field textarea{ resize:vertical; min-height:44px; }
+.toggle-row{ display:flex; gap:6px; }
+.toggle-row button{ flex:1; padding:9px 4px; border-radius:4px; border:1.5px solid var(--rule); background:#fff; font-family:'Inter',sans-serif; font-weight:600; font-size:0.76rem; cursor:pointer; color: var(--ink-soft); }
+.toggle-row button.active.cp{ background: var(--cp-dim); border-color: var(--cp); color: var(--cp); }
+.toggle-row button.active.n1{ background: var(--n1-dim); border-color: var(--n1); color: var(--n1); }
+.toggle-row button.active.rtt{ background: var(--rtt-dim); border-color: var(--rtt); color: var(--rtt); }
+.sheet-actions{ display:flex; gap:10px; margin-top:18px; }
+.hint{ font-size:0.74rem; color: var(--ink-soft); margin-top:4px; }
+.preview{ font-size:0.8rem; background:#fff; border:1.5px solid var(--rule); border-radius:4px; padding:10px 11px; margin-top:6px; }
+.preview div{ margin-bottom:3px; }
+.preview .now{ color: var(--rtt); font-weight:600; }
+.preview .later{ color: var(--amber); font-weight:600; }
+.close-x{ position:absolute; top:14px; right:16px; background:none; border:none; font-size:1.3rem; color: var(--ink-soft); cursor:pointer; }
+
+/* ---------- Toast (petit message "tampon" en haut de l'écran) ---------- */
+.toast{ position:fixed; top:16px; left:50%; transform: translateX(-50%) translateY(-140%) rotate(-3deg); background: var(--paper); border: 2px solid var(--ink); border-radius: 6px; padding: 10px 16px; font-family:'IBM Plex Mono', monospace; font-size:0.76rem; z-index: 60; box-shadow: 3px 3px 0 var(--rule); transition: transform .35s cubic-bezier(.34,1.56,.64,1); max-width: 90vw; }
+.toast.show{ transform: translateX(-50%) translateY(0) rotate(-2deg); }
+
+.loading{ text-align:center; padding: 60px 10px; font-family:'IBM Plex Mono', monospace; color: var(--ink-soft); font-size:0.85rem; }
+</style>
+</head>
+<body>
+<div class="app" id="app"><div class="loading">Ouverture du carnet…</div></div>
+<div class="overlay" id="overlay"><div class="sheet" id="sheet"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* =======================================================================
+   MON CARNET DE CONGÉS
+   ------------------------------------------------------------------
+   Petite appli perso (stockage window.storage, non partagé) qui suit
+   3 compteurs :
+     - CP N-1  : reliquat de congés payés de l'année précédente
+                 (ne se réalimente jamais tout seul)
+     - CP      : congés payés de l'année en cours
+                 (+2,08 j / mois par défaut, réglable)
+     - RTT     : jours de RTT
+                 (total annuel saisi à la main, réparti /12 chaque mois)
+
+   Règle de déduction "vision fin de mois" :
+     - Un congé posé sur le MOIS EN COURS (passé ou futur dans ce mois)
+       est déduit immédiatement du solde.
+     - Un congé posé sur un MOIS FUTUR reste "prévisionnel" (rien n'est
+       déduit tout de suite) et apparaît dans la section "À venir".
+       Dès que ce mois arrive (à l'ouverture de l'appli), il est réglé
+       automatiquement en même temps que l'acquisition mensuelle.
+
+   Toute écriture de type "congé posé" (appliquée ou prévisionnelle)
+   peut être supprimée (double-tap sur le bouton ✕ pour confirmer).
+   ======================================================================= */
+
+const STORAGE_KEY = 'carnet-data-v2';
+const MOIS = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+
+// Métadonnées d'affichage pour chaque catégorie de solde.
+const CATS = {
+  CP_N1: { label: 'CP N-1', short: 'N-1', cls: 'n1' },
+  CP:    { label: 'CP (année en cours)', short: 'CP', cls: 'cp' },
+  RTT:   { label: 'RTT', short: 'RTT', cls: 'rtt' }
+};
+
+// État global de l'appli, chargé depuis window.storage au démarrage.
+let state = null;
+
+// Id de l'écriture actuellement en attente de confirmation de suppression
+// (permet le pattern "tap 1 = confirmer, tap 2 = supprimer").
+let pendingDeleteId = null;
+
+/* ----------------------------- Utilitaires ----------------------------- */
+
+// Renvoie une clé "AAAA-MM" pour une date donnée.
+function ym(d){ return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'); }
+
+// Convertit "AAAA-MM" en un entier comparable (année*12 + mois).
+function ymIndex(ymStr){ const [y,m] = ymStr.split('-').map(Number); return y*12+m; }
+
+// "2026-09" -> "septembre 2026"
+function monthLabel(ymStr){ const [y,m] = ymStr.split('-').map(Number); return MOIS[m-1] + ' ' + y; }
+
+// Formate un nombre avec virgule française et arrondi à 2 décimales.
+function fmt(n){ return (Math.round(n*100)/100).toString().replace('.', ','); }
+
+// Identifiant unique simple pour chaque écriture du journal.
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+// Nom de la clé de solde correspondant à une catégorie.
+function balKey(cat){ return cat === 'CP_N1' ? 'cpN1' : (cat === 'CP' ? 'cp' : 'rtt'); }
+
+/* ------------------------------ Stockage ------------------------------- */
+
+async function load(){
+  try{
+    const res = await window.storage.get(STORAGE_KEY, false); // false = données perso, non partagées
+    state = JSON.parse(res.value);
+  }catch(e){
+    state = null; // rien en base -> première utilisation
+  }
+}
+async function save(){ await window.storage.set(STORAGE_KEY, JSON.stringify(state), false); }
+
+// Construit l'état initial juste après l'écran d'accueil (onboarding).
+function defaultState(cpN1, cp, rtt, rttAnnual){
+  const nowYm = ym(new Date());
+  return {
+    onboarded: true,
+    settings: { cpMonthly: 2.08, rttAnnual: rttAnnual },
+    balances: { cpN1: cpN1, cp: cp, rtt: rtt },
+    lastAccrualMonth: nowYm, // on considère l'acquisition du mois en cours déjà comprise dans les soldes saisis
+    history: [{ id: uid(), tsMonth: nowYm, type:'init', note: 'Soldes de départ',
+      cpN1After: cpN1, cpAfter: cp, rttAfter: rtt }],
+    pending: [] // congés posés pour un mois futur, pas encore déduits
+  };
+}
+
+/* ------------------------- Logique métier -------------------------- */
+
+// Règle les congés "prévisionnels" dont le mois est arrivé (<= targetYm) :
+// on déduit réellement le solde et on déplace l'écriture vers l'historique.
+function settlePendingUpTo(targetYm){
+  const targetIdx = ymIndex(targetYm);
+  const stillPending = [];
+  for(const p of state.pending){
+    if(ymIndex(p.monthYm) <= targetIdx){
+      const key = balKey(p.category);
+      state.balances[key] -= p.days;
+      state.history.unshift({
+        id: uid(), tsMonth: p.monthYm, type:'leave', category: p.category,
+        days: p.days, note: p.note, dateLabel: p.dateLabel,
+        cpN1After: state.balances.cpN1, cpAfter: state.balances.cp, rttAfter: state.balances.rtt
+      });
+    } else {
+      stillPending.push(p); // toujours dans le futur, on le garde en attente
+    }
+  }
+  state.pending = stillPending;
+}
+
+// À appeler à chaque ouverture de l'appli : ajoute l'acquisition CP + RTT
+// pour chaque mois écoulé depuis la dernière visite, et règle au passage
+// les congés prévisionnels dont le mois est arrivé. Renvoie le nombre de
+// mois traités (0 si rien de nouveau).
+function applyMonthlyRollover(){
+  const nowYm = ym(new Date());
+  if(state.lastAccrualMonth === nowYm){ return 0; } // déjà à jour ce mois-ci
+
+  const lIdx = ymIndex(state.lastAccrualMonth);
+  const cIdx = ymIndex(nowYm);
+  let diff = cIdx - lIdx;
+  if(diff <= 0){ state.lastAccrualMonth = nowYm; return 0; } // changement d'horloge improbable, on resynchronise
+
+  let cursorIdx = lIdx;
+  let count = 0;
+  for(let i=0;i<diff;i++){
+    cursorIdx++;
+    const cy = Math.floor((cursorIdx-1)/12);
+    const cm = ((cursorIdx-1) % 12) + 1;
+    const cursorYm = cy + '-' + String(cm).padStart(2,'0');
+
+    // 1) on règle d'abord les congés prévisionnels de ce mois
+    settlePendingUpTo(cursorYm);
+
+    // 2) puis l'acquisition mensuelle (CP N-1 n'est jamais réalimenté)
+    const cpAdd = state.settings.cpMonthly;
+    const rttAdd = state.settings.rttAnnual / 12;
+    state.balances.cp += cpAdd;
+    state.balances.rtt += rttAdd;
+    state.history.unshift({
+      id: uid(), tsMonth: cursorYm, type:'accrual', cpDelta: cpAdd, rttDelta: rttAdd,
+      note: 'Acquisition mensuelle',
+      cpN1After: state.balances.cpN1, cpAfter: state.balances.cp, rttAfter: state.balances.rtt
+    });
+    count++;
+  }
+  state.lastAccrualMonth = nowYm;
+  return count;
+}
+
+// Répartit un intervalle de dates en jours ouvrés (lun-ven), groupés par mois.
+// Ex: 28 août -> 2 sept renvoie { '2026-08': 2, '2026-09': 2 }
+function businessDaysByMonth(start, end){
+  const buckets = {};
+  let cur = new Date(start);
+  while(cur <= end){
+    const day = cur.getDay(); // 0 = dimanche, 6 = samedi
+    if(day !== 0 && day !== 6){
+      const key = ym(cur);
+      buckets[key] = (buckets[key]||0) + 1;
+    }
+    cur.setDate(cur.getDate()+1);
+  }
+  return buckets;
+}
+
+// Somme des jours "à venir" (prévisionnels) pour une catégorie donnée.
+function pendingTotalFor(cat){
+  return state.pending.filter(p=>p.category===cat).reduce((s,p)=>s+p.days,0);
+}
+
+/* --------------------------- Suppression --------------------------- */
+
+// Supprime une écriture de congé déjà appliquée (historique) : on rend
+// les jours au solde concerné puis on retire l'écriture du journal.
+async function deleteHistoryEntry(id){
+  const idx = state.history.findIndex(h => h.id === id);
+  if(idx === -1) return;
+  const h = state.history[idx];
+  if(h.type !== 'leave') return; // on ne supprime jamais une acquisition auto ou le solde de départ
+  state.balances[balKey(h.category)] += h.days; // on recrédite les jours
+  state.history.splice(idx, 1);
+  await save();
+  render();
+  showToast('Congé supprimé, solde recrédité');
+}
+
+// Supprime une écriture "à venir" (prévisionnelle) : aucun solde à
+// recréditer puisque rien n'avait encore été déduit.
+async function deletePendingEntry(id){
+  const idx = state.pending.findIndex(p => p.id === id);
+  if(idx === -1) return;
+  state.pending.splice(idx, 1);
+  await save();
+  render();
+  showToast('Congé prévisionnel supprimé');
+}
+
+// Gère le clic sur un bouton ✕ : premier tap -> mode confirmation,
+// deuxième tap sur le même bouton -> suppression effective.
+function handleDeleteClick(id, kind){
+  if(pendingDeleteId === id){
+    pendingDeleteId = null;
+    if(kind === 'history') deleteHistoryEntry(id);
+    else deletePendingEntry(id);
+  } else {
+    pendingDeleteId = id;
+    render(); // ré-affiche le bouton concerné en mode "Confirmer ?"
+    setTimeout(() => { if(pendingDeleteId === id){ pendingDeleteId = null; render(); } }, 3000);
+  }
+}
+
+/* ------------------------------- UI -------------------------------- */
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=> t.classList.remove('show'), 3600);
+}
+function openSheet(html){ document.getElementById('sheet').innerHTML = html; document.getElementById('overlay').classList.add('open'); }
+function closeSheet(){ document.getElementById('overlay').classList.remove('open'); }
+
+// Construit le HTML d'une écriture (historique ou prévisionnelle) avec,
+// le cas échéant, son bouton de suppression.
+function renderEntry(h, kind){
+  if(h.type === 'init'){
+    return `<div class="entry"><div class="dot" style="color:var(--ink-soft)">•</div>
+      <div class="desc">${h.note}<span class="note">${monthLabel(h.tsMonth)}</span></div><div class="delta"></div></div>`;
+  }
+  if(h.type === 'accrual'){
+    return `<div class="entry"><div class="dot" style="color:var(--amber)">+</div>
+      <div class="desc">Acquisition — CP &amp; RTT<span class="note">${monthLabel(h.tsMonth)}</span></div>
+      <div class="delta pos">+${fmt(h.cpDelta)} CP · +${fmt(h.rttDelta)} RTT</div></div>`;
+  }
+
+  // "leave" appliqué ou prévisionnel : les deux sont supprimables.
+  const c = CATS[h.category];
+  const isPending = kind === 'pending';
+  const confirming = pendingDeleteId === h.id;
+  const delBtn = `<button class="del-btn${confirming?' confirm':''}" data-id="${h.id}" data-kind="${kind}">${confirming ? 'Confirmer ?' : '✕'}</button>`;
+
+  const desc = isPending
+    ? `Solde prévisionnel réduit de ${fmt(h.days)} j fin ${monthLabel(h.monthYm)}${h.note ? ' · ' + h.note : ''}<span class="note">${h.dateLabel || ''}</span>`
+    : `Congé posé — ${c.label}${h.note ? ' · ' + h.note : ''}<span class="note">${h.dateLabel || monthLabel(h.tsMonth)}</span>`;
+
+  return `<div class="entry ${isPending?'pending ':''}${c.cls}">
+    <div class="dot">${c.short}</div>
+    <div class="desc">${desc}</div>
+    <div class="right-col">
+      <div class="delta neg">−${fmt(h.days)} j</div>
+      ${delBtn}
+    </div>
+  </div>`;
+}
+
+function render(){
+  const app = document.getElementById('app');
+  const today = new Date();
+
+  // --- Cartes de solde ---
+  const stubsHtml = ['CP_N1','CP','RTT'].map(cat=>{
+    const c = CATS[cat];
+    const bal = state.balances[balKey(cat)];
+    const prov = pendingTotalFor(cat);
+    let subLine = '';
+    if(cat === 'CP') subLine = `<div class="sub">+${fmt(state.settings.cpMonthly)} j / mois</div>`;
+    if(cat === 'RTT') subLine = `<div class="sub">${fmt(state.settings.rttAnnual)} j / an</div>`;
+    if(cat === 'CP_N1') subLine = `<div class="sub">solde reporté</div>`;
+    const provLine = prov > 0 ? `<div class="prov">− ${fmt(prov)} j prévisionnel</div>` : '';
+    return `<div class="stub ${c.cls}">
+      <div><div class="label">${c.label}</div>${subLine}</div>
+      <div class="right"><div class="val">${fmt(bal)}<span class="unit">j</span></div>${provLine}</div>
+    </div>`;
+  }).join('');
+
+  // --- Journal (historique), le plus récent en premier ---
+  const historyHtml = state.history.length
+    ? state.history.map(h => renderEntry(h, 'history')).join('')
+    : '<div class="empty">Aucune écriture pour le moment</div>';
+
+  // --- Congés à venir (prévisionnels), triés par mois ---
+  const sortedPending = state.pending.slice().sort((a,b)=>ymIndex(a.monthYm)-ymIndex(b.monthYm));
+  const pendingHtml = sortedPending.map(p => renderEntry(p, 'pending')).join('');
+
+  app.innerHTML = `
+    <div class="hdr">
+      <div><h1>Mon carnet de congés</h1><div class="month">${MOIS[today.getMonth()]} ${today.getFullYear()}</div></div>
+      <button class="gear" id="btnSettings" aria-label="Réglages">⚙</button>
+    </div>
+    <div class="stubs">${stubsHtml}</div>
+    <div class="actions">
+      <button class="btn" id="btnPose">Poser des congés</button>
+      <button class="btn secondary" id="btnSettings2">Réglages</button>
+    </div>
+    ${pendingHtml ? `<div class="section-title"><span>À venir</span><span>${state.pending.length}</span></div><div class="ledger">${pendingHtml}</div>` : ''}
+    <div class="section-title"><span>Journal</span><span>${state.history.length} écriture${state.history.length>1?'s':''}</span></div>
+    <div class="ledger">${historyHtml}</div>
+  `;
+
+  document.getElementById('btnPose').onclick = openPoseForm;
+  document.getElementById('btnSettings').onclick = openSettingsForm;
+  document.getElementById('btnSettings2').onclick = openSettingsForm;
+
+  // Écoute des boutons de suppression (délégation simple après re-render).
+  document.querySelectorAll('.del-btn').forEach(btn=>{
+    btn.onclick = () => handleDeleteClick(btn.dataset.id, btn.dataset.kind);
+  });
+}
+
+/* --------------------- Formulaire "Poser des congés" --------------------- */
+
+let poseCategory = 'CP'; // catégorie sélectionnée dans le formulaire en cours
+
+// Met à jour l'aperçu (répartition par mois) pendant la saisie des dates.
+function updatePreview(){
+  const s = document.getElementById('dStart').value;
+  const e = document.getElementById('dEnd').value;
+  const preview = document.getElementById('preview');
+  if(!s || !e){ preview.innerHTML=''; return; }
+  const start = new Date(s), end = new Date(e);
+  if(end < start){ preview.innerHTML = '<div>Date de fin avant la date de début.</div>'; return; }
+
+  const buckets = businessDaysByMonth(start, end);
+  const nowIdx = ymIndex(ym(new Date()));
+  let html = '';
+  Object.keys(buckets).sort((a,b)=>ymIndex(a)-ymIndex(b)).forEach(k=>{
+    const days = buckets[k];
+    if(ymIndex(k) <= nowIdx){
+      html += `<div class="now">− ${days} j déduits maintenant (${monthLabel(k)})</div>`;
+    } else {
+      html += `<div class="later">Prévisionnel : − ${days} j fin ${monthLabel(k)}</div>`;
+    }
+  });
+  preview.innerHTML = html || '<div>Aucun jour ouvré dans cette période.</div>';
+  preview.dataset.buckets = JSON.stringify(buckets); // on garde le détail pour l'enregistrement
+}
+
+function openPoseForm(){
+  poseCategory = 'CP';
+  openSheet(`
+    <button class="close-x" onclick="closeSheet()">×</button>
+    <h2>Poser des congés</h2>
+    <div class="field">
+      <label>Type</label>
+      <div class="toggle-row">
+        <button type="button" id="tN1" class="n1">CP N-1</button>
+        <button type="button" id="tCP" class="active cp">CP</button>
+        <button type="button" id="tRTT" class="rtt">RTT</button>
+      </div>
+    </div>
+    <div class="field"><label>Du</label><input type="date" id="dStart"></div>
+    <div class="field">
+      <label>Au</label><input type="date" id="dEnd">
+      <div class="hint">Jours ouvrés (lun–ven) comptés automatiquement. Un jour ce mois-ci est déduit tout de suite ; un jour d'un mois futur reste prévisionnel jusqu'au début de ce mois-là.</div>
+    </div>
+    <div class="field"><label>Note (optionnel)</label><input type="text" id="dNote" placeholder="ex. semaine à la mer"></div>
+    <div class="preview" id="preview"></div>
+    <div class="sheet-actions">
+      <button class="btn secondary" onclick="closeSheet()">Annuler</button>
+      <button class="btn" id="btnSavePose">Enregistrer</button>
+    </div>
+  `);
+
+  // Sélecteur de catégorie (3 boutons à bascule).
+  const tN1 = document.getElementById('tN1'), tCP = document.getElementById('tCP'), tRTT = document.getElementById('tRTT');
+  function setCat(cat){
+    poseCategory = cat;
+    [tN1,tCP,tRTT].forEach(b=>b.classList.remove('active'));
+    if(cat==='CP_N1') tN1.classList.add('active');
+    if(cat==='CP') tCP.classList.add('active');
+    if(cat==='RTT') tRTT.classList.add('active');
+  }
+  tN1.onclick = () => setCat('CP_N1');
+  tCP.onclick = () => setCat('CP');
+  tRTT.onclick = () => setCat('RTT');
+
+  document.getElementById('dStart').onchange = updatePreview;
+  document.getElementById('dEnd').onchange = updatePreview;
+
+  document.getElementById('btnSavePose').onclick = async () => {
+    const preview = document.getElementById('preview');
+    const buckets = preview.dataset.buckets ? JSON.parse(preview.dataset.buckets) : null;
+    if(!buckets || Object.keys(buckets).length === 0){
+      showToast('Choisis une période valide');
+      return;
+    }
+    const note = document.getElementById('dNote').value.trim();
+    const s = document.getElementById('dStart').value;
+    const e = document.getElementById('dEnd').value;
+    const opts = {day:'numeric', month:'short'};
+    const dateLabel = new Date(s).toLocaleDateString('fr-FR', opts) + ' → ' + new Date(e).toLocaleDateString('fr-FR', opts);
+    const nowIdx = ymIndex(ym(new Date()));
+
+    // On traite chaque mois de la période séparément : déduction immédiate
+    // pour le mois en cours (ou passé), écriture "prévisionnelle" sinon.
+    let immediateTotal = 0, futureTotal = 0;
+    Object.keys(buckets).forEach(k=>{
+      const days = buckets[k];
+      if(ymIndex(k) <= nowIdx){
+        state.balances[balKey(poseCategory)] -= days;
+        state.history.unshift({
+          id: uid(), tsMonth: k, type:'leave', category: poseCategory, days, note, dateLabel,
+          cpN1After: state.balances.cpN1, cpAfter: state.balances.cp, rttAfter: state.balances.rtt
+        });
+        immediateTotal += days;
+      } else {
+        state.pending.push({ id: uid(), category: poseCategory, days, monthYm: k, note, dateLabel });
+        futureTotal += days;
+      }
+    });
+
+    await save();
+    closeSheet();
+    render();
+    let msg = '';
+    if(immediateTotal>0) msg += `${fmt(immediateTotal)} j déduits`;
+    if(futureTotal>0) msg += (msg?' · ':'') + `${fmt(futureTotal)} j prévisionnels`;
+    showToast(msg || 'Enregistré');
+  };
+}
+
+/* ------------------------------ Réglages ------------------------------ */
+
+function openSettingsForm(){
+  openSheet(`
+    <button class="close-x" onclick="closeSheet()">×</button>
+    <h2>Réglages</h2>
+    <div class="field"><label>Solde CP N-1</label><input type="number" id="sN1" step="0.5" value="${state.balances.cpN1}"></div>
+    <div class="field"><label>Solde CP (année en cours)</label><input type="number" id="sCp" step="0.5" value="${state.balances.cp}"></div>
+    <div class="field"><label>Solde RTT</label><input type="number" id="sRtt" step="0.5" value="${state.balances.rtt}"></div>
+    <div class="field"><label>Acquisition CP / mois</label><input type="number" id="sCpMonthly" step="0.01" value="${state.settings.cpMonthly}"></div>
+    <div class="field"><label>RTT / an</label><input type="number" id="sRttAnnual" step="0.5" value="${state.settings.rttAnnual}">
+      <div class="hint">Réparti automatiquement chaque mois (÷12). Le solde CP N-1 n'est pas réalimenté.</div></div>
+    <div class="sheet-actions">
+      <button class="btn secondary" onclick="closeSheet()">Annuler</button>
+      <button class="btn" id="btnSaveSettings">Enregistrer</button>
+    </div>
+  `);
+  document.getElementById('btnSaveSettings').onclick = async () => {
+    state.balances.cpN1 = parseFloat(document.getElementById('sN1').value) || 0;
+    state.balances.cp = parseFloat(document.getElementById('sCp').value) || 0;
+    state.balances.rtt = parseFloat(document.getElementById('sRtt').value) || 0;
+    state.settings.cpMonthly = parseFloat(document.getElementById('sCpMonthly').value) || 2.08;
+    state.settings.rttAnnual = parseFloat(document.getElementById('sRttAnnual').value) || 0;
+    await save();
+    closeSheet();
+    render();
+    showToast('Réglages enregistrés');
+  };
+}
+
+/* ------------------------------ Onboarding ----------------------------- */
+
+// Écran affiché uniquement lors de la toute première utilisation.
+function openOnboarding(){
+  openSheet(`
+    <h2>Bienvenue — premier réglage</h2>
+    <div class="field"><label>Solde CP N-1 restant (jours)</label><input type="number" id="oN1" step="0.5" value="0">
+      <div class="hint">Le reliquat de congés de l'année dernière.</div></div>
+    <div class="field"><label>Solde CP actuel (année en cours)</label><input type="number" id="oCp" step="0.5" value="0"></div>
+    <div class="field"><label>Solde RTT actuel</label><input type="number" id="oRtt" step="0.5" value="0"></div>
+    <div class="field"><label>RTT prévus cette année (total)</label><input type="number" id="oRttAnnual" step="0.5" value="12">
+      <div class="hint">Réparti automatiquement chaque mois (÷12). Modifiable plus tard.</div></div>
+    <div class="hint" style="margin-bottom:14px;">Acquisition CP : 2,08 j / mois (25 j / an) — modifiable dans les réglages. Le solde CP N-1 n'est pas réalimenté automatiquement.</div>
+    <div class="sheet-actions"><button class="btn" id="btnStart">Commencer</button></div>
+  `);
+  document.getElementById('btnStart').onclick = async () => {
+    const n1 = parseFloat(document.getElementById('oN1').value) || 0;
+    const cp = parseFloat(document.getElementById('oCp').value) || 0;
+    const rtt = parseFloat(document.getElementById('oRtt').value) || 0;
+    const rttAnnual = parseFloat(document.getElementById('oRttAnnual').value) || 0;
+    state = defaultState(n1, cp, rtt, rttAnnual);
+    await save();
+    closeSheet();
+    render();
+  };
+}
+
+/* ------------------------------- Démarrage ------------------------------ */
+
+async function init(){
+  await load();
+
+  // Première utilisation -> écran de configuration initiale.
+  if(!state || !state.onboarded){
+    document.getElementById('app').innerHTML = `<div class="hdr"><div><h1>Mon carnet de congés</h1></div></div><div class="empty">Configuration initiale requise</div>`;
+    openOnboarding();
+    return;
+  }
+
+  if(!state.pending) state.pending = []; // compatibilité avec d'anciennes données sans ce champ
+
+  // Rattrape l'acquisition (et les congés prévisionnels échus) depuis la dernière visite.
+  const monthsAdded = applyMonthlyRollover();
+  if(monthsAdded > 0) await save();
+
+  render();
+
+  if(monthsAdded > 0) showToast(monthsAdded === 1 ? 'Congés du mois ajoutés' : monthsAdded + ' mois d\'acquisition ajoutés');
+}
+
+init();
+</script>
+</body>
+</html>
